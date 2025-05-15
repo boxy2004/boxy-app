@@ -1,0 +1,107 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_tts/flutter_tts.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
+
+void main() => runApp(BoxyApp());
+
+class BoxyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'Boxy',
+      theme: ThemeData.dark().copyWith(
+        primaryColor: Colors.pinkAccent,
+        toggleableActiveColor: Colors.pinkAccent,
+        scaffoldBackgroundColor: Color(0xFF121212),
+        textTheme: TextTheme(bodyLarge: TextStyle(color: Colors.white)),
+      ),
+      home: BoxyHomePage(),
+    );
+  }
+}
+
+class BoxyHomePage extends StatefulWidget {
+  @override
+  _BoxyHomePageState createState() => _BoxyHomePageState();
+}
+
+class _BoxyHomePageState extends State<BoxyHomePage> {
+  late stt.SpeechToText _speech;
+  bool _isListening = false;
+  String _text = 'Presiona el micrófono para hablar...';
+  bool _silentMode = false;
+  final FlutterTts _flutterTts = FlutterTts();
+
+  @override
+  void initState() {
+    super.initState();
+    _speech = stt.SpeechToText();
+  }
+
+  void _listen() async {
+    if (!_isListening) {
+      bool available = await _speech.initialize();
+      if (available) {
+        setState(() => _isListening = true);
+        _speech.listen(onResult: (val) => setState(() {
+              _text = val.recognizedWords;
+              if (val.finalResult) {
+                _respond(_text);
+              }
+            }));
+      }
+    } else {
+      setState(() => _isListening = false);
+      _speech.stop();
+    }
+  }
+
+  void _respond(String input) async {
+    String response = "Hola, soy Boxy. Dijiste: $input";
+    if (!_silentMode) {
+      await _flutterTts.setLanguage("es-MX");
+      await _flutterTts.speak(response);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(response),
+        backgroundColor: Colors.pinkAccent,
+      ));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Boxy'),
+        actions: [
+          Switch(
+            value: _silentMode,
+            onChanged: (value) {
+              setState(() {
+                _silentMode = value;
+              });
+            },
+            activeColor: Colors.pinkAccent,
+          )
+        ],
+      ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(_text,
+                style: TextStyle(fontSize: 20.0), textAlign: TextAlign.center),
+            SizedBox(height: 20),
+            FloatingActionButton(
+              onPressed: _listen,
+              child: Icon(_isListening ? Icons.mic_off : Icons.mic),
+              backgroundColor: Colors.pinkAccent,
+            )
+          ],
+        ),
+      ),
+    );
+  }
+}
